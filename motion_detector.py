@@ -13,55 +13,19 @@ MAYBE_USE = "maybe_use"
 IN_USE = "in_use"
 MAYBE_IDLE = "maybe_idle"
 
-# ARGUMENTS SETUP
-# construct the argument parser and parse the arguments
-ap = argparse.ArgumentParser()
-ap.add_argument("-v", "--video", help="path to the video file")
-ap.add_argument("-a", "--min-area", type=int, default=500, help="minimum area size")
-args = vars(ap.parse_args())
+# FUNCTIONS
 
-# VIDEO SOURCE SETUP
-# if the video argument is None, then we are reading from webcam
-if args.get("video", None) is None:
-	vs = VideoStream(src=0).start()
-	time.sleep(2.0)
-# otherwise, we are reading from a video file
-else:
-	vs = cv2.VideoCapture(args["video"])
-# initialize the first frame in the video stream
-firstFrame = None
+# Compare before and after tool use images 
+def compare_before_after(before_img, after_img):
+	pass
 
-# IDLE-USE STATE SETUP
-ticks = 0
-alpha_use = 10
-alpha_idle = 10
-state = IDLE
-
-# loop over the frames of the video
-while True:
-	ticks += 1
-	print(ticks)
-
-	# grab the current frame and initialize the occupied/unoccupied
-	# text
-	frame = vs.read()
-	frame = frame if args.get("video", None) is None else frame[1]
-	text = "Unoccupied"
-
-	# if the frame could not be grabbed, then we have reached the end
-	# of the video
-	if frame is None:
-		break
-
+# process img, compare to first_img, draw bounding boxes
+# Returns: 
+def detect_motion(first_img, img):
 	# resize the frame, convert it to grayscale, and blur it
 	frame = imutils.resize(frame, width=500)
 	gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 	gray = cv2.GaussianBlur(gray, (21, 21), 0)
-
-	# if the first frame is None, initialize it
-	if firstFrame is None:
-		firstFrame = gray
-		continue
 
 	# compute the absolute difference between the current frame and
 	# first frame
@@ -86,6 +50,61 @@ while True:
 		(x, y, w, h) = cv2.boundingRect(c)
 		cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
 		text = "Occupied"
+
+	return (frame, text, frameDelta, thresh)
+
+# MAIN
+
+# ARGUMENTS SETUP
+# construct the argument parser and parse the arguments
+ap = argparse.ArgumentParser()
+ap.add_argument("-v", "--video", help="path to the video file")
+ap.add_argument("-a", "--min-area", type=int, default=500, help="minimum area size")
+args = vars(ap.parse_args())
+
+# VIDEO SOURCE SETUP
+# if the video argument is None, then we are reading from webcam
+if args.get("video", None) is None:
+	vs = VideoStream(src=0).start()
+	time.sleep(2.0)
+# otherwise, we are reading from a video file
+else:
+	vs = cv2.VideoCapture(args["video"])
+# initialize the first frame in the video stream
+firstFrame = None
+firstFrameColor = None
+
+# IDLE-USE STATE SETUP
+ticks = 0
+alpha_use = 10
+alpha_idle = 10
+state = IDLE
+
+# loop over the frames of the video
+while True:
+	ticks += 1
+	print(ticks)
+
+	# grab the current frame and initialize the occupied/unoccupied
+	# text
+	frame = vs.read()
+	frame = frame if args.get("video", None) is None else frame[1]
+	text = "Unoccupied"
+
+	# if the frame could not be grabbed, then we have reached the end
+	# of the video
+	if frame is None:
+		break
+	# save colored frame copies
+	if firstFrameColor is None:
+		firstFrameColor = frame
+	frameColor = frame #TODO reference or copy? needed? 
+	# if the first frame is None, initialize it
+	if firstFrame is None:
+		firstFrame = gray
+		continue
+
+	frame, text, frameDelta, thresh = detect_motion(firstFrame, frame)
 
 	# if text == occupied, motion detected 
 	if text == "Occupied":
@@ -112,7 +131,7 @@ while True:
 			if ticks > alpha_idle:
 				state = IDLE
 				ticks = 0
-				# TODO save and compare pictures
+				# TODO compare_before_after(firstFrameColor, frameColor)
 				print("Session ended")
 		# if maybe use, go back to idle
 		elif state == MAYBE_USE:
