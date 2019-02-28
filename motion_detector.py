@@ -6,26 +6,41 @@ import imutils
 import time
 import cv2
 
+# CONSTANTS
+# idle-use state constants
+IDLE = "idle"
+MAYBE_USE = "maybe_use"
+IN_USE = "in_use"
+MAYBE_IDLE = "maybe_idle"
+
+# ARGUMENTS SETUP
 # construct the argument parser and parse the arguments
 ap = argparse.ArgumentParser()
 ap.add_argument("-v", "--video", help="path to the video file")
 ap.add_argument("-a", "--min-area", type=int, default=500, help="minimum area size")
 args = vars(ap.parse_args())
 
+# VIDEO SOURCE SETUP
 # if the video argument is None, then we are reading from webcam
 if args.get("video", None) is None:
 	vs = VideoStream(src=0).start()
 	time.sleep(2.0)
-
 # otherwise, we are reading from a video file
 else:
 	vs = cv2.VideoCapture(args["video"])
-
 # initialize the first frame in the video stream
 firstFrame = None
 
+# IDLE-USE STATE SETUP
+ticks = 0
+alpha_use = 10
+alpha_idle = 10
+state = IDLE
+
 # loop over the frames of the video
 while True:
+	ticks += 1
+
 	# grab the current frame and initialize the occupied/unoccupied
 	# text
 	frame = vs.read()
@@ -61,9 +76,44 @@ while True:
 
 	# loop over the contours
 	for c in cnts:
-		# if the contour is too small, ignore it
+		# if the contour is too small, ignore it = no motion detected
 		if cv2.contourArea(c) < args["min_area"]:
+			# if maybe idle, check tick count
+			if state == MAYBE_IDLE:
+				if ticks > alpha_idle:
+					state = IDLE
+					ticks = 0
+					# TODO save and compare pictures
+					print("Session ended")
+			# if maybe use, go back to idle
+			elif state == MAYBE_USE:
+				state = IDLE
+				print("IDLE")
+				ticks = 0
+			# if in use, enter maybe idle state
+			elif state == IN_USE:
+				state = MAYBE_IDLE
+				print("MAYBE_IDLE")
+				ticks = 0
 			continue
+
+		# else motion detected
+		# if idle, enter maybe use state
+		if state == IDLE:
+			state = MAYBE_USE
+			print("MAYBE_USE")
+			ticks = 0
+		# if maybe use, check tick count
+		elif state == MAYBE_USE:
+			if ticks > alpha_use:
+				state = IN_USE
+				ticks = 0
+				print("IN_USE")
+		# if maybe idle, go back to in use 
+		elif state == MAYBE_IDLE:
+			state = IN_USE
+			print("IN_USE")
+			ticks = 0
 
 		# compute the bounding box for the contour, draw it on the frame,
 		# and update the text
