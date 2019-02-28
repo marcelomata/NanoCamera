@@ -1,5 +1,6 @@
 # import the necessary packages
 from imutils.video import VideoStream
+import numpy as np
 import argparse
 import datetime
 import imutils
@@ -17,7 +18,20 @@ MAYBE_IDLE = "maybe_idle"
 
 # Compare before and after tool use images 
 def compare_before_after(before_img, after_img):
-	pass
+	# process difference between before and after images
+	frame, text, frameDelta, thresh = detect_motion(before_img, after_img)
+
+	# draw the text and timestamp on the frame
+	# concatenate with "before" image
+	horizontal = np.contatenate((before_img, frame), axis = 1)
+	cv2.putText(horizontal, "After session snapshot", (10, 20),
+		cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+	cv2.putText(horizontal, datetime.datetime.now().strftime("%A %d %B %Y %I:%M:%S%p"),
+		(10, horizontal.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 255), 1)
+
+	# show the frame and record if the user presses a key
+	cv2.imshow("After session snapshot", horizontal)
+
 
 # process img, compare to first_img, draw bounding boxes
 # Returns: 
