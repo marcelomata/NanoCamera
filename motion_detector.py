@@ -21,15 +21,19 @@ def compare_before_after(before_img, after_img):
 
 # process img, compare to first_img, draw bounding boxes
 # Returns: 
-def detect_motion(first_img, img):
+def detect_motion(first_img, frame):
 	# resize the frame, convert it to grayscale, and blur it
 	frame = imutils.resize(frame, width=500)
 	gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 	gray = cv2.GaussianBlur(gray, (21, 21), 0)
 
+	# if the first frame is None, initialize it
+	if first_img is None:
+		return (gray,)
+
 	# compute the absolute difference between the current frame and
 	# first frame
-	frameDelta = cv2.absdiff(firstFrame, gray)
+	frameDelta = cv2.absdiff(first_img, gray)
 	thresh = cv2.threshold(frameDelta, 25, 255, cv2.THRESH_BINARY)[1]
 
 	# dilate the thresholded image to fill in holes, then find contours
@@ -99,12 +103,16 @@ while True:
 	if firstFrameColor is None:
 		firstFrameColor = frame
 	frameColor = frame #TODO reference or copy? needed? 
-	# if the first frame is None, initialize it
-	if firstFrame is None:
-		firstFrame = gray
-		continue
 
-	frame, text, frameDelta, thresh = detect_motion(firstFrame, frame)
+	# process images 
+	result = detect_motion(firstFrame, frame)
+	# initialize first frame...
+	if len(result) == 1:
+		firstFrame = result[0]
+		continue
+	# or continue processing
+	else:
+		frame, text, frameDelta, thresh = result
 
 	# if text == occupied, motion detected 
 	if text == "Occupied":
