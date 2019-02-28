@@ -40,6 +40,7 @@ state = IDLE
 # loop over the frames of the video
 while True:
 	ticks += 1
+	print(ticks)
 
 	# grab the current frame and initialize the occupied/unoccupied
 	# text
@@ -78,26 +79,16 @@ while True:
 	for c in cnts:
 		# if the contour is too small, ignore it = no motion detected
 		if cv2.contourArea(c) < args["min_area"]:
-			# if maybe idle, check tick count
-			if state == MAYBE_IDLE:
-				if ticks > alpha_idle:
-					state = IDLE
-					ticks = 0
-					# TODO save and compare pictures
-					print("Session ended")
-			# if maybe use, go back to idle
-			elif state == MAYBE_USE:
-				state = IDLE
-				print("IDLE")
-				ticks = 0
-			# if in use, enter maybe idle state
-			elif state == IN_USE:
-				state = MAYBE_IDLE
-				print("MAYBE_IDLE")
-				ticks = 0
 			continue
 
-		# else motion detected
+		# compute the bounding box for the contour, draw it on the frame,
+		# and update the text
+		(x, y, w, h) = cv2.boundingRect(c)
+		cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+		text = "Occupied"
+
+	# if text == occupied, motion detected 
+	if text == "Occupied":
 		# if idle, enter maybe use state
 		if state == IDLE:
 			state = MAYBE_USE
@@ -114,14 +105,27 @@ while True:
 			state = IN_USE
 			print("IN_USE")
 			ticks = 0
-
-		# compute the bounding box for the contour, draw it on the frame,
-		# and update the text
-		(x, y, w, h) = cv2.boundingRect(c)
-		cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-		text = "Occupied"
-
-			# draw the text and timestamp on the frame
+	# if text != occupied, no motion detected
+	else:
+		# if maybe idle, check tick count
+		if state == MAYBE_IDLE:
+			if ticks > alpha_idle:
+				state = IDLE
+				ticks = 0
+				# TODO save and compare pictures
+				print("Session ended")
+		# if maybe use, go back to idle
+		elif state == MAYBE_USE:
+			state = IDLE
+			print("IDLE")
+			ticks = 0
+		# if in use, enter maybe idle state
+		elif state == IN_USE:
+			state = MAYBE_IDLE
+			print("MAYBE_IDLE")
+			ticks = 0
+		
+	# draw the text and timestamp on the frame
 	cv2.putText(frame, "Room Status: {}".format(text), (10, 20),
 		cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
 	cv2.putText(frame, datetime.datetime.now().strftime("%A %d %B %Y %I:%M:%S%p"),
