@@ -23,6 +23,7 @@ def compare_before_after(before_img, after_img):
 # Returns: 
 def detect_motion(first_img, frame):
 	# resize the frame, convert it to grayscale, and blur it
+	text = 'Unoccupied'
 	frame = imutils.resize(frame, width=500)
 	gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 	gray = cv2.GaussianBlur(gray, (21, 21), 0)
