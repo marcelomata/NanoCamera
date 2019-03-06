@@ -20,17 +20,18 @@ MAYBE_IDLE = "maybe_idle"
 def compare_before_after(before_img, after_img):
 	# process difference between before and after images
 	frame, text, frameDelta, thresh = detect_motion(before_img, after_img)
-
+	print("Compare DONE")
+	
 	# draw the text and timestamp on the frame
 	# concatenate with "before" image
-	horizontal = np.contatenate((before_img, frame), axis = 1)
-	cv2.putText(horizontal, "After session snapshot", (10, 20),
+	# horizontal = np.concatenate((before_img, frame), axis = 1)
+	cv2.putText(frame, "After session snapshot", (10, 20),
 		cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-	cv2.putText(horizontal, datetime.datetime.now().strftime("%A %d %B %Y %I:%M:%S%p"),
-		(10, horizontal.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 255), 1)
+	cv2.putText(frame, datetime.datetime.now().strftime("%A %d %B %Y %I:%M:%S%p"),
+		(10, frame.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 0, 255), 1)
 
 	# show the frame and record if the user presses a key
-	cv2.imshow("After session snapshot", horizontal)
+	cv2.imshow("After session snapshot", frame)
 
 
 # process img, compare to first_img, draw bounding boxes
@@ -154,7 +155,7 @@ while True:
 			if ticks > alpha_idle:
 				state = IDLE
 				ticks = 0
-				# TODO compare_before_after(firstFrameColor, frameColor)
+				compare_before_after(firstFrame, frameColor)
 				print("Session ended")
 		# if maybe use, go back to idle
 		elif state == MAYBE_USE:
