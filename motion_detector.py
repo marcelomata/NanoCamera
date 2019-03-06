@@ -19,7 +19,7 @@ MAYBE_IDLE = "maybe_idle"
 # Compare before and after tool use images 
 def compare_before_after(before_img, after_img):
 	# process difference between before and after images
-	frame, text, frameDelta, thresh = detect_motion(before_img, after_img)
+	frame, text, frameDelta, thresh = motion_draw(before_img, after_img)
 	print("Compare DONE")
 	
 	# draw the text and timestamp on the frame
@@ -36,7 +36,7 @@ def compare_before_after(before_img, after_img):
 
 # process img, compare to first_img, draw bounding boxes
 # Returns: 
-def detect_motion(first_img, frame):
+def motion_draw(first_img, frame):
 	# resize the frame, convert it to grayscale, and blur it
 	text = 'Unoccupied'
 	frame = imutils.resize(frame, width=500)
@@ -73,6 +73,26 @@ def detect_motion(first_img, frame):
 
 	return (frame, text, frameDelta, thresh)
 
+def motion_boolean(first_img, frame):
+	# resize the frame, convert it to grayscale, and blur it
+	frame = imutils.resize(frame, width=500)
+	gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+	gray = cv2.GaussianBlur(gray, (21, 21), 0)
+
+	# compute the absolute difference between the current frame and
+	# first frame
+	frameDelta = cv2.absdiff(first_img, gray)
+	thresh = cv2.threshold(frameDelta, 25, 255, cv2.THRESH_BINARY)[1]
+
+	# dilate the thresholded image to fill in holes, then find contours
+	# on thresholded image
+	thresh = cv2.dilate(thresh, None, iterations=2)
+	cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL,
+		cv2.CHAIN_APPROX_SIMPLE)
+	cnts = imutils.grab_contours(cnts)
+	print("contours: ", cnts)
+	return len(cnts) > 0
+
 # MAIN
 
 # ARGUMENTS SETUP
@@ -93,6 +113,7 @@ else:
 # initialize the first frame in the video stream
 firstFrame = None
 firstFrameColor = None
+priorFrame = None
 
 # IDLE-USE STATE SETUP
 ticks = 0
@@ -121,17 +142,21 @@ while True:
 	frameColor = frame #TODO reference or copy? needed? 
 
 	# process images 
-	result = detect_motion(firstFrame, frame)
+	# 1) detect disturbance from initialization (for drawing boxes)
+	motion_result = motion_draw(firstFrame, frame)
 	# initialize first frame...
-	if len(result) == 1:
-		firstFrame = result[0]
+	if len(motion_result) == 1:
+		firstFrame = motion_result[0]
+		priorFrame = motion_result[0]
 		continue
 	# or continue processing
 	else:
-		frame, text, frameDelta, thresh = result
+		frame, text, frameDelta, thresh = motion_result
+	# 2) detect difference from previous frame (for detecting motion difference)
+		is_motion = motion_boolean(firstFrame, frame)
 
 	# if text == occupied, motion detected 
-	if text == "Occupied":
+	if is_motion:
 		# if idle, enter maybe use state
 		if state == IDLE:
 			state = MAYBE_USE
@@ -179,6 +204,9 @@ while True:
 	cv2.imshow("Thresh", thresh)
 	cv2.imshow("Frame Delta", frameDelta)
 	key = cv2.waitKey(1) & 0xFF
+
+	# set new priorFrame for next frame iteration
+	priorFrame = frame
 
 	# if the `q` key is pressed, break from the lop
 	if key == ord("q"):
