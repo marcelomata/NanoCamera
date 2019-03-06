@@ -59,7 +59,6 @@ def motion_draw(first_img, frame):
 		cv2.CHAIN_APPROX_SIMPLE)
 	cnts = imutils.grab_contours(cnts)
 
-	cnts_count = 0
 	# loop over the contours
 	for c in cnts:
 		# if the contour is too small, ignore it = no motion detected
@@ -71,9 +70,34 @@ def motion_draw(first_img, frame):
 		(x, y, w, h) = cv2.boundingRect(c)
 		cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
 		text = "Occupied"
+
+	return (frame, text, frameDelta, thresh)
+
+def motion_boolean(first_img, frame):
+	# resize the frame, convert it to grayscale, and blur it
+	frame = imutils.resize(frame, width=500)
+	gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+	gray = cv2.GaussianBlur(gray, (21, 21), 0)
+
+	frameDelta = cv2.absdiff(first_img, gray)
+	thresh = cv2.threshold(frameDelta, 25, 255, cv2.THRESH_BINARY)[1]
+
+	# dilate the thresholded image to fill in holes, then find contours
+	# on thresholded image
+	thresh = cv2.dilate(thresh, None, iterations=2)
+	cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL,
+		cv2.CHAIN_APPROX_SIMPLE)
+	cnts = imutils.grab_contours(cnts)
+
+	cnts_count = 0
+	# loop over the contours
+	for c in cnts:
+		# if the contour is too small, ignore it = no motion detected
+		if cv2.contourArea(c) < args["min_area"]:
+			continue
 		cnts_count += 1
 
-	return (frame, text, frameDelta, thresh, cnts_counnt)
+	return cnts_count > 0
 
 # MAIN
 
@@ -135,7 +159,7 @@ while True:
 	else:
 		frame, text, frameDelta, thresh, cnts_count = motion_result
 	# 2) detect difference from previous frame (for detecting motion difference)
-		is_motion = cnts_count > 0
+		is_motion = motion_boolean(priorFrame, frame)
 		print("Cnts_count: ", cnts_count)
 
 	# if text == occupied, motion detected 
