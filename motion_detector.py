@@ -79,7 +79,11 @@ def motion_boolean(first_img, frame):
 	gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 	gray = cv2.GaussianBlur(gray, (21, 21), 0)
 
-	frameDelta = cv2.absdiff(first_img, gray)
+	first_img = imutils.resize(first_img, width=500)
+	gray_prior = cv2.cvtColor(first_img, cv2.COLOR_BGR2GRAY)
+	gray_prior = cv2.GaussianBlur(gray_prior, (21, 21), 0)
+
+	frameDelta = cv2.absdiff(gray_prior, gray)
 	thresh = cv2.threshold(frameDelta, 25, 255, cv2.THRESH_BINARY)[1]
 
 	# dilate the thresholded image to fill in holes, then find contours
@@ -97,7 +101,9 @@ def motion_boolean(first_img, frame):
 			continue
 		cnts_count += 1
 
-	return cnts_count > 0
+	print("cnts:", cnts_count)
+
+	return cnts_count > 2
 
 # MAIN
 
@@ -130,7 +136,6 @@ state = IDLE
 # loop over the frames of the video
 while True:
 	ticks += 1
-	print(ticks)
 
 	# grab the current frame and initialize the occupied/unoccupied
 	# text
@@ -153,14 +158,13 @@ while True:
 	# initialize first frame...
 	if len(motion_result) == 1:
 		firstFrame = motion_result[0]
-		priorFrame = motion_result[0]
+		priorFrame = frame
 		continue
 	# or continue processing
 	else:
-		frame, text, frameDelta, thresh, cnts_count = motion_result
+		frame, text, frameDelta, thresh = motion_result
 	# 2) detect difference from previous frame (for detecting motion difference)
 		is_motion = motion_boolean(priorFrame, frame)
-		print("Cnts_count: ", cnts_count)
 
 	# if text == occupied, motion detected 
 	if is_motion:
