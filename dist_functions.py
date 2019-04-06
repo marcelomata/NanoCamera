@@ -52,3 +52,56 @@ def bayes_rule(prA, prB_givenA, b):
         new_dict[a_nonzero_prob[i]] = new_joint_dist.prob(new_joint_dist.nonzero_probs()[i])
     return Dist(new_dict)
 
+'''
+Make a distribution from mixture of given distributions
+
+todo params
+'''
+def mixture_dist(d1, d2, p):
+    dist1 = d1.nonzero_probs()
+    dist2 = d2.nonzero_probs()
+    dist_dict = {}
+    # iterate through dist1
+    for i in dist1:
+        if i in dist2:
+            dist_dict[i] = p*dist1[i]+(1-p)*dist2[i]
+        else:
+            dist_dict[i] = p*dist1[i]
+    #iterate through dist2 for things not present
+    for j in dist2:
+        if j not in dist_dict:
+            if j in dist2:
+                dist_dict[j] = p*dist1[j]+(1-p)*dist2[j]
+            else:
+                dist_dict[j] = (1-p)*dist2[j]
+    return Dist(dist_dict)
+'''
+Make a uniform distribution
+
+todo params
+'''
+def uniform_dist(li):
+    dist_dict  = {}
+    # each element has probability 1/(num elements)
+    for i in li:
+        dist_dict[i] = 1/len(li)
+    return Dist(dist_dict)
+
+'''
+Make a triangular distribution
+
+todo params
+specify half-width
+'''
+def triangle_dist(peak, width):
+    dist_dict = {}
+    a = peak-width
+    b = peak+width
+    for i in range(a+1, b):
+        if i < peak:
+            dist_dict[i] = 2*(i-a)/((b-a)*(peak-a))
+        else:
+            dist_dict[i] = 2*(b-i)/((b-a)*(b-peak))
+    return Dist(dist_dict)
+
+

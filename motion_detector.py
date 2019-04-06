@@ -6,6 +6,8 @@ import datetime
 import imutils
 import time
 import cv2
+from dist_functions import *
+from dist import *
 
 # CONSTANTS
 # idle-use state constants
@@ -15,6 +17,32 @@ IN_USE = "in_use"
 MAYBE_IDLE = "maybe_idle"
 
 # FUNCTIONS
+
+# probability functions
+def obs_model(state):
+    if state == IDLE:
+        triangle = triangle_dist(0, 2)
+        uni = uniform_dist(range(4))
+        return mixture(triangle, uni, .9)
+    elif state == MAYBE_USE:
+        triangle = triangle_dist(1, 2)
+        uni = uniform_dist(range(4))
+        return mixture(triangle, uni, .6)
+    elif state == IN_USE:
+        triangle = triangle_dist(2, 2)
+        uni = uniform_dist(range(4))
+        return mixture(triangle, uni, .9)
+    elif state == MAYBE_IDLE:
+        triangle = triangle_dist(3, 2)
+        uni = uniform_dist(range(4))
+        return mixture(triangle, uni, .6)
+    else:
+        return uniform_dist(range(4))
+    
+def update_prior(prior, peaks):
+    for peak in peaks:
+        prior = bayes_rule(prior, obs_model, sum(peak))
+    return prior
 
 # Compare before and after tool use images 
 def compare_before_after(before_img, after_img):
